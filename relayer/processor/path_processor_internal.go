@@ -787,6 +787,10 @@ func (pp *PathProcessor) assemblePacketMessage(
 	var assembleMessage func(provider.PacketInfo, provider.PacketProof) (provider.RelayerMessage, error)
 	switch msg.eventType {
 	case chantypes.EventTypeRecvPacket:
+		fmt.Println()
+		fmt.Printf("Packet Data: %s \n", msg.info.Data)
+		fmt.Println()
+
 		packetProof = src.chainProvider.PacketCommitment
 		assembleMessage = dst.chainProvider.MsgRecvPacket
 	case chantypes.EventTypeAcknowledgePacket:
