@@ -210,7 +210,11 @@ func (cc *CosmosProvider) QueryTendermintProof(ctx context.Context, height int64
 
 	res, err := cc.QueryABCI(ctx, req)
 	if err != nil {
-		return nil, nil, clienttypes.Height{}, err
+		return nil, []byte{}, clienttypes.Height{}, err
+	}
+
+	if !prove {
+		return res.Value, nil, clienttypes.Height{}, nil
 	}
 
 	merkleProof, err := commitmenttypes.ConvertProofs(res.ProofOps)
