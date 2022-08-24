@@ -421,6 +421,7 @@ func (cc *CosmosProvider) PacketCommitment(
 		cc.log.Error("Failed to unmarshal packet data into ABCI request query.",
 			zap.ByteString("packet_data", msgTransfer.Data))
 	} else {
+		fmt.Println("Using default ABCI Request Query")
 		req = &abci.RequestQuery{
 			Path:   fmt.Sprintf("store/%s/key", host.StoreKey),
 			Height: int64(height),
