@@ -416,6 +416,7 @@ func (cc *CosmosProvider) PacketCommitment(
 	// a proof is required for this request.
 	req := &abci.RequestQuery{}
 	err := json.Unmarshal(msgTransfer.Data, req)
+	fmt.Printf("ABCI Req Query after unmarshaling: %+v \n", req)
 	if err != nil {
 		// TODO maybe we want to change the log level here and possibly include more fields
 		cc.log.Error("Failed to unmarshal packet data into ABCI request query.",

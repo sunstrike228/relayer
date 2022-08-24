@@ -202,7 +202,7 @@ func (cc *CosmosProvider) QueryTendermintProof(ctx context.Context, req abci.Req
 	}
 
 	// TODO remove this debug output
-	fmt.Printf("ABCI Req Query: %v \n", req)
+	fmt.Printf("ABCI Req Query: %+v \n", req)
 
 	res, err := cc.QueryABCI(ctx, req)
 	if err != nil {
