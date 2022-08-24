@@ -838,10 +838,14 @@ func (pp *PathProcessor) assemblePacketMessage(
 
 	var proof provider.PacketProof
 	var err error
-	proof, err = packetProof(ctx, msg.info, src.latestBlock.Height)
-	if err != nil {
-		return nil, fmt.Errorf("error querying packet proof: %w", err)
+
+	if packetProof != nil {
+		proof, err = packetProof(ctx, msg.info, src.latestBlock.Height)
+		if err != nil {
+			return nil, fmt.Errorf("error querying packet proof: %w", err)
+		}
 	}
+
 	return assembleMessage(msg.info, proof)
 }
 
