@@ -2,6 +2,7 @@ package cosmos
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -22,6 +23,7 @@ import (
 	ibcexported "github.com/cosmos/ibc-go/v5/modules/core/exported"
 	tmclient "github.com/cosmos/ibc-go/v5/modules/light-clients/07-tendermint/types"
 	"github.com/cosmos/relayer/v2/relayer/provider"
+	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/light"
 	tmtypes "github.com/tendermint/tendermint/types"
 	"go.uber.org/zap"
@@ -409,12 +411,31 @@ func (cc *CosmosProvider) PacketCommitment(
 	height uint64,
 ) (provider.PacketProof, error) {
 	key := host.PacketCommitmentKey(msgTransfer.SourcePort, msgTransfer.SourceChannel, msgTransfer.Sequence)
-	commitment, proof, proofHeight, err := cc.QueryTendermintProof(ctx, int64(height), key)
+
+	// We attempt to unmarshall the packet data into an ABCI Request Query and if successful we check if
+	// a proof is required for this request.
+	req := &abci.RequestQuery{}
+	err := json.Unmarshal(msgTransfer.Data, req)
+	if err != nil {
+		// TODO maybe we want to change the log level here and possibly include more fields
+		cc.log.Error("Failed to unmarshal packet data into ABCI request query.",
+			zap.ByteString("packet_data", msgTransfer.Data))
+	}
+
+	var prove bool
+	if req != nil && req.Prove == false {
+		prove = false
+	} else {
+		prove = true
+	}
+
+	commitment, proof, proofHeight, err := cc.QueryTendermintProof(ctx, int64(height), key, prove)
 	if err != nil {
 		return provider.PacketProof{}, fmt.Errorf("error querying tendermint proof for packet commitment: %w", err)
 	}
+
 	// check if packet commitment exists
-	if len(commitment) == 0 {
+	if len(commitment) == 0 && prove {
 		return provider.PacketProof{}, chantypes.ErrPacketCommitmentNotFound
 	}
 
@@ -463,7 +484,7 @@ func (cc *CosmosProvider) PacketAcknowledgement(
 	height uint64,
 ) (provider.PacketProof, error) {
 	key := host.PacketAcknowledgementKey(msgRecvPacket.DestPort, msgRecvPacket.DestChannel, msgRecvPacket.Sequence)
-	ack, proof, proofHeight, err := cc.QueryTendermintProof(ctx, int64(height), key)
+	ack, proof, proofHeight, err := cc.QueryTendermintProof(ctx, int64(height), key, true)
 	if err != nil {
 		return provider.PacketProof{}, fmt.Errorf("error querying tendermint proof for packet acknowledgement: %w", err)
 	}
@@ -501,7 +522,7 @@ func (cc *CosmosProvider) PacketReceipt(
 	height uint64,
 ) (provider.PacketProof, error) {
 	key := host.PacketReceiptKey(msgTransfer.DestPort, msgTransfer.DestChannel, msgTransfer.Sequence)
-	_, proof, proofHeight, err := cc.QueryTendermintProof(ctx, int64(height), key)
+	_, proof, proofHeight, err := cc.QueryTendermintProof(ctx, int64(height), key, true)
 	if err != nil {
 		return provider.PacketProof{}, fmt.Errorf("error querying tendermint proof for packet receipt: %w", err)
 	}
@@ -521,7 +542,7 @@ func (cc *CosmosProvider) NextSeqRecv(
 	height uint64,
 ) (provider.PacketProof, error) {
 	key := host.NextSequenceRecvKey(msgTransfer.DestPort, msgTransfer.DestChannel)
-	_, proof, proofHeight, err := cc.QueryTendermintProof(ctx, int64(height), key)
+	_, proof, proofHeight, err := cc.QueryTendermintProof(ctx, int64(height), key, true)
 	if err != nil {
 		return provider.PacketProof{}, fmt.Errorf("error querying tendermint proof for next sequence receive: %w", err)
 	}
