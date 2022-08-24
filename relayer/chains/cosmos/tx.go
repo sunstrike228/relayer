@@ -421,7 +421,6 @@ func (cc *CosmosProvider) PacketCommitment(
 		cc.log.Error("Failed to unmarshal packet data into ABCI request query.",
 			zap.ByteString("packet_data", msgTransfer.Data))
 
-		fmt.Println("Using default ABCI Request Query")
 		req = &abci.RequestQuery{
 			Path:   fmt.Sprintf("store/%s/key", host.StoreKey),
 			Height: int64(height),
@@ -455,11 +454,19 @@ func (cc *CosmosProvider) MsgRecvPacket(
 		return nil, err
 	}
 
-	msg := &chantypes.MsgRecvPacket{
-		Packet:          msgTransfer.Packet(),
-		ProofCommitment: proof.Proof,
-		ProofHeight:     proof.ProofHeight,
-		Signer:          signer,
+	var msg *chantypes.MsgRecvPacket
+	if proof.IsZero() {
+		msg = &chantypes.MsgRecvPacket{
+			Packet: msgTransfer.Packet(),
+			Signer: signer,
+		}
+	} else {
+		msg = &chantypes.MsgRecvPacket{
+			Packet:          msgTransfer.Packet(),
+			ProofCommitment: proof.Proof,
+			ProofHeight:     proof.ProofHeight,
+			Signer:          signer,
+		}
 	}
 
 	return NewCosmosMessage(msg), nil
