@@ -432,11 +432,26 @@ func (cc *CosmosProvider) MsgRecvPacket(
 	if err != nil {
 		return nil, err
 	}
-	msg := &chantypes.MsgRecvPacket{
-		Packet:          msgTransfer.Packet(),
-		ProofCommitment: proof.Proof,
-		ProofHeight:     proof.ProofHeight,
-		Signer:          signer,
+
+	msg := &chantypes.MsgRecvPacket{}
+
+	// TODO remove debugging output
+	if proof.IsZero() {
+		fmt.Println("Packet Proof was empty")
+		msg = &chantypes.MsgRecvPacket{
+			Packet:          msgTransfer.Packet(),
+			ProofCommitment: nil,
+			ProofHeight:     clienttypes.Height{},
+			Signer:          signer,
+		}
+	} else {
+		fmt.Println("Packet proof not empty")
+		msg = &chantypes.MsgRecvPacket{
+			Packet:          msgTransfer.Packet(),
+			ProofCommitment: proof.Proof,
+			ProofHeight:     proof.ProofHeight,
+			Signer:          signer,
+		}
 	}
 
 	return NewCosmosMessage(msg), nil

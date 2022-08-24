@@ -126,6 +126,10 @@ type PacketProof struct {
 	ProofHeight clienttypes.Height
 }
 
+func (pp *PacketProof) IsZero() bool {
+	return pp.Proof == nil && pp.ProofHeight.IsZero()
+}
+
 // ConnectionProof includes all of the proof parameters needed for the connection handshake.
 type ConnectionProof struct {
 	ConsensusStateProof  []byte
