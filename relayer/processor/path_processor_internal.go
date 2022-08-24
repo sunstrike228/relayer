@@ -2,6 +2,7 @@ package processor
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
@@ -9,6 +10,7 @@ import (
 	conntypes "github.com/cosmos/ibc-go/v5/modules/core/03-connection/types"
 	chantypes "github.com/cosmos/ibc-go/v5/modules/core/04-channel/types"
 	"github.com/cosmos/relayer/v2/relayer/provider"
+	abci "github.com/tendermint/tendermint/abci/types"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )
@@ -791,8 +793,23 @@ func (pp *PathProcessor) assemblePacketMessage(
 		fmt.Printf("Packet Data: %s \n", msg.info.Data)
 		fmt.Println()
 
-		packetProof = src.chainProvider.PacketCommitment
-		assembleMessage = dst.chainProvider.MsgRecvPacket
+		// We attempt to unmarshall the packet data into an ABCI Request Query and if successful we check if
+		// a proof is required for this request.
+		req := &abci.RequestQuery{}
+		err := json.Unmarshal(msg.info.Data, req)
+		if err != nil {
+			// TODO maybe we want to change the log level here and possibly include more fields
+			pp.log.Error("Failed to unmarshal packet data into ABCI request query.",
+				zap.ByteString("packet_data", msg.info.Data))
+		}
+
+		if req != nil && req.Prove {
+			packetProof = src.chainProvider.PacketCommitment
+			assembleMessage = dst.chainProvider.MsgRecvPacket
+		} else {
+			assembleMessage = dst.chainProvider.MsgRecvPacket
+		}
+
 	case chantypes.EventTypeAcknowledgePacket:
 		packetProof = src.chainProvider.PacketAcknowledgement
 		assembleMessage = dst.chainProvider.MsgAcknowledgement
