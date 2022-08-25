@@ -405,10 +405,6 @@ func (cc *CosmosProvider) ValidatePacket(msgTransfer provider.PacketInfo, latest
 	return nil
 }
 
-type ABCIRequests struct {
-	Reqs []abci.RequestQuery `json:"requests"`
-}
-
 func (cc *CosmosProvider) PacketCommitment(
 	ctx context.Context,
 	msgTransfer provider.PacketInfo,
@@ -418,7 +414,7 @@ func (cc *CosmosProvider) PacketCommitment(
 
 	// We attempt to unmarshall the packet data into an ABCI Request Query and if successful we check if
 	// a proof is required for this request.
-	var req ABCIRequests
+	var req []abci.RequestQuery
 	err := json.Unmarshal(msgTransfer.Data, &req)
 	if err != nil {
 		// TODO maybe we want to change the log level here and possibly include more fields
@@ -426,27 +422,25 @@ func (cc *CosmosProvider) PacketCommitment(
 			zap.ByteString("packet_data", msgTransfer.Data))
 
 		fmt.Println("Using default ABCI Request Query")
-		req = ABCIRequests{
-			Reqs: []abci.RequestQuery{
-				{
-					Path:   fmt.Sprintf("store/%s/key", host.StoreKey),
-					Height: int64(height),
-					Data:   key,
-					Prove:  false,
-				},
+		req = []abci.RequestQuery{
+			{
+				Path:   fmt.Sprintf("store/%s/key", host.StoreKey),
+				Height: int64(height),
+				Data:   key,
+				Prove:  false,
 			},
 		}
 	}
 
-	fmt.Printf("ABCI Req Query after unmarshaling: %+v \n", req.Reqs[0])
+	fmt.Printf("ABCI Req Query after unmarshaling: %+v \n", req[0])
 
-	commitment, proof, proofHeight, err := cc.QueryTendermintProof(ctx, req.Reqs[0])
+	commitment, proof, proofHeight, err := cc.QueryTendermintProof(ctx, req[0])
 	if err != nil {
 		return provider.PacketProof{}, fmt.Errorf("error querying tendermint proof for packet commitment: %w", err)
 	}
 
 	// check if packet commitment exists
-	if len(commitment) == 0 && req.Reqs[0].Prove {
+	if len(commitment) == 0 && req[0].Prove {
 		return provider.PacketProof{}, chantypes.ErrPacketCommitmentNotFound
 	}
 
